@@ -56,4 +56,8 @@ export class KeyManager {
         return this.forFuzzer(fuzzerId).concat(':FZZ:', requestId.toString());
     }
 
+    public corContract(fuzzerId: UUID): string {
+        return this.forFuzzer(fuzzerId).concat(':API');
+    }
+
 }

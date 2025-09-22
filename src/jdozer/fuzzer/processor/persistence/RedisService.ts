@@ -32,6 +32,16 @@ export class RedisService implements OnModuleDestroy {
         await this.client.set(key, JSON.stringify(value));
     }
 
+    async getNative(key: string): Promise<string> {
+        try {
+            return await this.client.get(key);
+        } catch(e) {
+            const errorMsg = `getNative: Error retrieving key ${key}: ${e.message}`;
+            this.log.error(errorMsg);
+            throw new Error(errorMsg);
+        }
+    }
+
     async get(key: string): Promise<any> {
         try {
             let data: any = JSON.parse(await this.client.get(key));

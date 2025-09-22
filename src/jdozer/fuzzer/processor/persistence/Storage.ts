@@ -65,7 +65,8 @@ export class Storage {
         try {
             let requestIds = await this.redisService.getKeys(this.keyManager.forReqKeysByOperation(fuzzerId, operation));
             if (!requestIds) {
-                throw new StorageException({ message: `Request IDs for ${operation} not found` });
+                this.log.warn(`getRequestIds: No request IDs found for operation ${operation}`);
+                return [];
             }
             return requestIds;
         } catch (e) {
@@ -108,7 +109,8 @@ export class Storage {
         try {
             let response = await this.redisService.get(requestId.replace(':REQ', ':RES'));
             if (!response) {
-                throw new StorageException({ message: `Response for request ${requestId} not found` });
+                this.log.warn(`getResponseByRequestId: No response found for request ${requestId}`);
+                return undefined;
             }
             return response;
         } catch (e) {
@@ -137,6 +139,20 @@ export class Storage {
             await this.redisService.set(this.keyManager.forFuzz(fuzzerId, requestId), fuzz);
         } catch (e) {
             const errorMsg = `saveAggregate: The aggregate for request ${requestId} contains errors!: ${e.message}`;
+            this.log.error(errorMsg);
+            throw new StorageException({ message: errorMsg });
+        }
+    }
+
+    public async getContract(fuzzerId: UUID): Promise<any> {
+        try {
+            const contract = await this.redisService.getNative(this.keyManager.forApi(fuzzerId));
+            if (!contract) {
+                throw new StorageException({ message: `Contract for fuzzer ${fuzzerId} not found` });
+            }
+            return JSON.parse(Buffer.from(contract, 'base64').toString('utf-8'));
+        } catch (e) {
+            const errorMsg = `getContract: The contract for fuzzer ${fuzzerId} contains errors!: ${e.message}`;
             this.log.error(errorMsg);
             throw new StorageException({ message: errorMsg });
         }

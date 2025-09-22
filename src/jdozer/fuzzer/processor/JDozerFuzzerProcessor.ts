@@ -2,7 +2,9 @@ import { UUID } from "crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Storage } from "./persistence/Storage";
 import { ProcessorException } from "./ProcessorException";
-import { response } from "express";
+import { Validator } from "./audit/Validator";
+import { ResponseAudit } from "./audit/ResponseAudit";
+import { Audit } from "./audit/Audit";
 
 @Injectable()
 export class JDozerFuzzerProcessor {
@@ -18,15 +20,20 @@ export class JDozerFuzzerProcessor {
             const fuzzer = await this.getFuzzer(fuzzerId);
 
             for (const operationId of fuzzer.operationIds) {
+                const operation: any = await this.storage.getOperation(operationId, fuzzer.id);
+                const responseAudit = new ResponseAudit(operation);
                 const reqIds: string[] = await this.storage.getRequestIds(operationId, fuzzer.id);
+                let auditor: Audit;
                 for (const reqId of reqIds) {
                     const request: any = await this.storage.getRequestById(reqId);
                     const mutations: any = await this.getMutation(request, fuzzer.id);
                     const response: any = await this.storage.getResponseByRequestId(reqId);
+                    auditor = responseAudit.response({ statusCode: response.statusCode, payload: response.payload });
                     const aggregate: any = {};
                     aggregate.request = request;
                     aggregate.request.mutations = mutations;
                     aggregate.response = response;
+                    aggregate.response.audit = auditor;
                     this.storage.saveFuzz(fuzzer.id, request.uuid as UUID, aggregate);
                 }
             }
@@ -86,5 +93,6 @@ export class JDozerFuzzerProcessor {
                 throw new ProcessorException({ message: 'Error: unknown parameter type' });
         }
     }
+
 
 }
