@@ -23,9 +23,10 @@ export class ResponseAudit {
             const resp = this.findResponse(response.statusCode);
             if (!resp) {
                 audit.statusCode = new Validator(false, [{ message: `The status code ${response.statusCode} is not defined` }]);
+            } else {
+                audit.payload = this.payload(response.payload, resp);
             }
             audit.statusCode = new Validator(true, []);
-            audit.payload = this.payload(response.payload, resp);
             return audit;
 
         } catch (e) {

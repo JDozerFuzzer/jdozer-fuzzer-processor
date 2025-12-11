@@ -52,8 +52,8 @@ export class KeyManager {
         return operation.split(':')[3] as UUID;
     }
 
-    public forFuzz(fuzzerId: UUID, requestId: UUID): string {
-        return this.forFuzzer(fuzzerId).concat(':FZZ:', requestId.toString());
+    public forFuzz(fuzzerId: UUID, requestId: UUID, operationId: string, statusCode: number): string {
+        return this.forFuzzer(fuzzerId).concat(':FZZ:', operationId, ':', statusCode.toString(), ':', requestId.toString());
     }
 
     public corContract(fuzzerId: UUID): string {

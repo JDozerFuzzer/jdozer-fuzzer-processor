@@ -134,9 +134,9 @@ export class Storage {
         }
     }
 
-    public async saveFuzz(fuzzerId: UUID, requestId: UUID, fuzz: any): Promise<void> {
+    public async saveFuzz(fuzzerId: UUID, requestId: UUID, operationId: string, statusCode: number, fuzz: any): Promise<void> {
         try {
-            await this.redisService.set(this.keyManager.forFuzz(fuzzerId, requestId), fuzz);
+            await this.redisService.set(this.keyManager.forFuzz(fuzzerId, requestId, operationId, statusCode), fuzz);
         } catch (e) {
             const errorMsg = `saveAggregate: The aggregate for request ${requestId} contains errors!: ${e.message}`;
             this.log.error(errorMsg);
@@ -155,6 +155,16 @@ export class Storage {
             const errorMsg = `getContract: The contract for fuzzer ${fuzzerId} contains errors!: ${e.message}`;
             this.log.error(errorMsg);
             throw new StorageException({ message: errorMsg });
+        }
+    }
+
+    public async save(key: string, value: any): Promise<void> {
+        try {
+            await this.redisService.set(key, value);
+        } catch (e) {
+            const err = `Error trying to save data.`;
+            this.log.error(err, e.message);
+            throw e;
         }
     }
 }
