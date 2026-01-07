@@ -158,6 +158,36 @@ export class Storage {
         }
     }
 
+    public async getVector(vectorId: number): Promise<any> {
+        try {
+            return await this.redisService.get(`JDF:VEC:${vectorId}`);
+        } catch (e) {
+            const errorMsg = `getVector: The vector ${vectorId} contains errors!: ${e.message}`;
+            this.log.error(errorMsg);
+            throw new StorageException({ message: errorMsg });
+        }
+    }
+
+    public async getVectorCount(fuzzerId: UUID): Promise<string> {
+        try {
+            return await this.redisService.getNative(this.keyManager.forFuzzer(fuzzerId).concat(':VEC:COUNT'));
+        } catch (e) {
+            const errorMsg = `getVectorCount: The vector count contains errors!: ${e.message}`;
+            this.log.error(errorMsg);
+            throw new StorageException({ message: errorMsg });
+        }
+    }
+
+    public async saveVectorCount(fuzzerId: UUID, vectorCount: any): Promise<void> {
+        try {
+            await this.redisService.set(this.keyManager.forFuzzer(fuzzerId).concat(':VEC:COUNT'), vectorCount);
+        } catch (e) {
+            const errorMsg = `saveVectorCount: The vector count contains errors!: ${e.message}`;
+            this.log.error(errorMsg);
+            throw new StorageException({ message: errorMsg });
+        }
+    }
+
     public async save(key: string, value: any): Promise<void> {
         try {
             await this.redisService.set(key, value);

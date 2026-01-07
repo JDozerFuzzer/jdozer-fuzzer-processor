@@ -6,6 +6,8 @@ import { Validator } from "./audit/Validator";
 import { ResponseAudit } from "./audit/ResponseAudit";
 import { Audit } from "./audit/Audit";
 import { StatusCodeCounts } from "./counts/StatusCodeCounts";
+import { EngineMetrics } from "./audit/EngineMetrics";
+import { VectorsProcessor } from "./audit/vectors/VectorsProcessor";
 
 @Injectable()
 export class JDozerFuzzerProcessor {
@@ -20,8 +22,10 @@ export class JDozerFuzzerProcessor {
 
             const fuzzer = await this.getFuzzer(fuzzerId);
             let statusCodesAgreggate: any[] = [];
+            const vectorsProcessor = new VectorsProcessor(fuzzer.id, this.storage);
 
             for (const operationId of fuzzer.operationIds) {
+
                 const operation: any = await this.storage.getOperation(operationId, fuzzer.id);
                 const responseAudit = new ResponseAudit(operation);
                 const reqIds: string[] = await this.storage.getRequestIds(operationId, fuzzer.id);
@@ -38,6 +42,8 @@ export class JDozerFuzzerProcessor {
                     aggregate.request.mutations = mutations;
                     aggregate.response = response;
                     aggregate.response.audit = auditor;
+
+                    vectorsProcessor.add(aggregate);
                     this.storage.saveFuzz(fuzzer.id, request.uuid as UUID, operationId, response.statusCode, aggregate);
 
                     statusCodeCounts.add(response.statusCode);
@@ -46,7 +52,13 @@ export class JDozerFuzzerProcessor {
                 statusCodesAgreggate = statusCodesAgreggate.concat(statusCodeCounts.get());
             }
 
+            await vectorsProcessor.save();
             await this.storage.save(`JDF:${fuzzerId}:SCC`, statusCodesAgreggate);
+
+            const engineMetrics: EngineMetrics = new EngineMetrics();
+            const metrics = await engineMetrics.read(fuzzer.id);
+            await this.storage.save(`JDF:${fuzzerId}:EME`, metrics);
+
             this.log.debug(`process: Fuzzer ${fuzzerId} processed successfully.`);
 
         } catch (e) {
