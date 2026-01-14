@@ -197,4 +197,14 @@ export class Storage {
             throw e;
         }
     }
+
+    public async saveMutationCount(fuzzerId: UUID, mutationCount: any): Promise<void> {
+        try {
+            await this.redisService.set(this.keyManager.forFuzzer(fuzzerId).concat(':MUT:COUNT'), mutationCount);
+        } catch (e) {
+            const errorMsg = `saveMutationCount: The mutation count contains errors!: ${e.message}`;
+            this.log.error(errorMsg);
+            throw new StorageException({ message: errorMsg });
+        }
+    }
 }
