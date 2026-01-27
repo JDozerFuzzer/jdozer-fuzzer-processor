@@ -1,17 +1,24 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Logger, OnModuleInit } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import { JDozerFuzzerProcessor } from '../JDozerFuzzerProcessor';
 import { RedisService } from '../persistence/RedisService';
 import { randomUUID, UUID } from 'crypto';
+import { RequestInterceptor } from '../runntime/RequestInterceptor';
 
 @Injectable()
-export class RedisEventsGateway implements OnModuleDestroy {
+export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
 
     private readonly log = new Logger(RedisEventsGateway.name);
     private subscriber: Redis.Redis;
 
+    private subEngine: Redis.Redis;
+
     private static readonly CHANNEL = 'jdozer:fuzzer:broker';
+    private static readonly MY_CHANNEL = 'jdozer:fuzzer:processor';
+    private static readonly ENGINE_CHANNEL = 'jdozer:fuzzer:engine';
     private static readonly ENTITY = 'fuzzer-processor';
+
+    private readonly requestInterceptor: RequestInterceptor;
 
     constructor(
         private readonly fuzzerProcessor: JDozerFuzzerProcessor,
@@ -21,14 +28,49 @@ export class RedisEventsGateway implements OnModuleDestroy {
             host: process.env.FUZZER_REDIS_HOST,
             port: +process.env.FUZZER_REDIS_PORT
         });
-        this.log.debug(`RedisEventsGateway initialized with host: ${process.env.FUZZER_REDIS_HOST}, port: ${process.env.FUZZER_REDIS_PORT}`);
+
+        this.subEngine = this.subscriber.duplicate();
+        this.setupEngineSubscriptions();
         this.initialize();
+
+        this.log.debug(`RedisEventsGateway initialized with host: ${process.env.FUZZER_REDIS_HOST}, port: ${process.env.FUZZER_REDIS_PORT}`);
+        this.requestInterceptor = new RequestInterceptor(this.redisService, this);
+    }
+
+    onModuleInit() {
+        throw new Error('Method not implemented.');
+    }
+
+    async setupEngineSubscriptions() {
+        this.subEngine.subscribe(RedisEventsGateway.ENGINE_CHANNEL);
+        this.log.log(`Subscribed to ${RedisEventsGateway.ENGINE_CHANNEL}`);
+        this.subEngine.on('message', async (channel: string, message: string) => {
+            this.log.verbose(`Received message on channel ${channel}: ${message}`);
+            try {
+                if (RedisEventsGateway.ENGINE_CHANNEL === channel) {
+                    this.log.verbose(`[message] Message received from channel: ${channel}`);
+                    const event: any = JSON.parse(message);
+                    if (event.version === '1.0.0' && event.entityType === 'engine' && event.eventType === 'request-created') {
+                        try {
+                            const data: any = JSON.parse(Buffer.from(event.data, 'base64').toString('binary'));
+                            await this.requestInterceptor.intercept(data.reqKey);
+                        } catch (e) {
+                            this.log.error(`[message] Error intercepting request: ${e.message}`, e);
+                        }
+                    }
+                }
+            } catch (e) {
+                this.log.error(`Error parsing message: ${message}`);
+            }
+        });
     }
 
     async initialize() {
 
         this.log.log(`[initialize] Initializing RedisEventsGateway...`);
         this.log.log(`[initialize] Subscribing to Redis channel: ${RedisEventsGateway.CHANNEL}`);
+
+        await this.subscriber.subscribe(RedisEventsGateway.CHANNEL);
 
         this.subscriber.on('error', (err) => {
             this.log.error(`[initialize] Redis subscriber error: ${err.message}`, err);
@@ -71,7 +113,6 @@ export class RedisEventsGateway implements OnModuleDestroy {
             }
         });
 
-        await this.subscriber.subscribe(RedisEventsGateway.CHANNEL);
         this.log.log(`[initialize] RedisEventsGateway initialized and listening on channel: ${RedisEventsGateway.CHANNEL}`);
     }
 
@@ -114,11 +155,26 @@ export class RedisEventsGateway implements OnModuleDestroy {
             entityId: entityId,
             entityType: RedisEventsGateway.ENTITY,
             eventType: eventType,
-            data: Buffer.from(JSON.stringify(payload), 'binary').toString('base64')
+            data: payload
         };
 
         await this.redisService.publish(channel, event);
 
+    }
+
+    async runntimeEvent(fuzzerId: UUID, eventType: string, data: any) {
+        try {
+            return this.redisService.publish(RedisEventsGateway.MY_CHANNEL, {
+                id: randomUUID(),
+                timestamp: new Date().getTime(),
+                entityId: fuzzerId,
+                entityType: RedisEventsGateway.ENTITY,
+                eventType: eventType,
+                data: data
+            });
+        } catch (e) {
+            this.log.error(`[runntimeEvent] Error publishing event: ${e.message}`, e);
+        }
     }
 
     async onModuleDestroy() {

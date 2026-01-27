@@ -11,8 +11,8 @@ export class RedisService implements OnModuleDestroy {
 
     constructor() {
         this.client = new Redis.Redis({
-            host: process.env.REDIS_HOST,
-            port: +process.env.REDIS_PORT
+            host: process.env.FUZZER_REDIS_HOST,
+            port: +process.env.FUZZER_REDIS_PORT
         });
     }
 
@@ -35,7 +35,7 @@ export class RedisService implements OnModuleDestroy {
     async getNative(key: string): Promise<string> {
         try {
             return await this.client.get(key);
-        } catch(e) {
+        } catch (e) {
             const errorMsg = `getNative: Error retrieving key ${key}: ${e.message}`;
             this.log.error(errorMsg);
             throw new Error(errorMsg);

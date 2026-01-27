@@ -60,4 +60,8 @@ export class KeyManager {
         return this.forFuzzer(fuzzerId).concat(':API');
     }
 
+    public static getFuzzerId(key: string): UUID {
+        return key.split(':')[1] as UUID;
+    }
+
 }
