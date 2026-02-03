@@ -18,10 +18,10 @@ export class RequestInterceptor {
         this.taggingInterceptor = new TaggingInterceptor(redisService, redisEventGateway);
     }
 
-    async intercept(id: string) {
+    async intercept(responseId: string) {
         try {
-            this.log.debug(`[intercept] Intercepting request: ${id}`);
-            const req: any = await this.redisService.get(id);
+            this.log.debug(`[intercept] Intercepting request: ${responseId}`);
+            const req: any = await this.redisService.get(responseId.replace(':RES', ':REQ'));
             await this.taggingInterceptor.intercept(req);
         } catch (e) {
             this.log.error(`[intercept] Error intercepting request: ${e.message}`, e);

@@ -58,7 +58,7 @@ export class RedisService implements OnModuleDestroy {
     }
 
     async publish(channel: string, payload: any) {
-        payload.data = Buffer.from(JSON.stringify(payload.data), 'binary').toString('base64');
+        // payload.data = Buffer.from(JSON.stringify(payload.data), 'binary').toString('base64');
         const payloadJson = JSON.stringify(payload);
         const eventId = await this.client.publish(channel, payloadJson);
         this.log.verbose(`publish: ${channel} / ${eventId} - ${payloadJson}`);
