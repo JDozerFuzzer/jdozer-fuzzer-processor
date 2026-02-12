@@ -12,8 +12,12 @@ export class ResponseAudit {
 
     private responses: any;
 
-    constructor(private readonly operation: any) {
-        this.responses = this.setAuditor(operation);
+    /**
+     * 
+     * @param opDefinition Operation definition
+     */
+    constructor(private readonly opDefinition: any) {
+        this.responses = this.setAuditor(opDefinition);
     }
 
     public response(response: { statusCode: number, payload: any }): Audit {
@@ -30,7 +34,7 @@ export class ResponseAudit {
             return audit;
 
         } catch (e) {
-            const errorMsg = `validate: The operation ${this.operation.name} contains errors!: ${e.message}`;
+            const errorMsg = `validate: The operation ${this.opDefinition.name} contains errors!: ${e.message}`;
             this.log.error(errorMsg);
             throw new ValidatorException({ message: errorMsg });
         }
@@ -48,7 +52,7 @@ export class ResponseAudit {
                 return new Validator(false, [{ message: `There is no response schema defined for status code ${responseSchema.statusCode}` }]);
             }
         } catch (e) {
-            const errorMsg = `validateSchema: The operation ${this.operation.name} contains errors!: ${e.message}`;
+            const errorMsg = `validateSchema: The operation ${this.opDefinition.name} contains errors!: ${e.message}`;
             this.log.error(errorMsg);
             throw new ValidatorException({ message: errorMsg });
         }

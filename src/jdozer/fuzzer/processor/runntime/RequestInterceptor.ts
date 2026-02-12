@@ -2,7 +2,6 @@ import { Logger } from "@nestjs/common";
 import { RedisService } from "../persistence/RedisService";
 import { TaggingInterceptor } from "./TaggingInterceptor";
 import { RedisEventsGateway } from "../event/RedisEventGateway";
-import { UUID } from "crypto";
 
 
 export class RequestInterceptor {

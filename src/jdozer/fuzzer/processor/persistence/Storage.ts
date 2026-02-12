@@ -207,4 +207,8 @@ export class Storage {
             throw new StorageException({ message: errorMsg });
         }
     }
+
+    public getRedisService(): RedisService {
+        return this.redisService;
+    }
 }

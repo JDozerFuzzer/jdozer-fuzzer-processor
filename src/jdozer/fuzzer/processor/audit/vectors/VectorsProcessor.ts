@@ -2,19 +2,21 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { UUID } from "crypto";
 import { Storage } from "../../persistence/Storage";
 import { VectorCount } from "./VectorCount";
-
+import { RedisService } from "../../persistence/RedisService";
 
 export class VectorsProcessor {
 
     private readonly log: Logger = new Logger(VectorsProcessor.name);
     private readonly fuzzerId: UUID;
 
+    private readonly redisService: RedisService;
     private readonly storage: Storage;
     private readonly vectorCounts: VectorCount[] = [];
 
     constructor(fuzzerId: UUID, storage: Storage) {
         this.fuzzerId = fuzzerId;
         this.storage = storage;
+        this.redisService = storage.getRedisService();
     }
 
     public async add(requestFuzz: any) {
