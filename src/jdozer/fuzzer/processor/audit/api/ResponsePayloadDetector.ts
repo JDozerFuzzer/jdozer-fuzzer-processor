@@ -30,7 +30,13 @@ export class ResponsePayloadDetector extends BaseDetector {
             } else if (responseSchema && payload) {
                 const payloadDecoded = this.decodePayload(payload);
                 try {
-                    const payloadObj = JSON.parse(payloadDecoded);
+                    let payloadObj: any;
+                    try {
+                        payloadObj = JSON.parse(payloadDecoded);
+                    } catch (e) {
+                        this.log.warn(`[payloadValidator] Response body is not a valid JSON`, e.message, payloadDecoded, this.fuzzer.id);
+                        return this.responseIsNotJson(statusCodeResult.validation.statusCode);
+                    }
                     const validator: ValidateFunction = this.getValidator(responseSchema);
                     const isValid = validator(payloadObj);
                     if (!isValid) {
@@ -39,7 +45,8 @@ export class ResponsePayloadDetector extends BaseDetector {
                         return this.schemaValidationPassed(statusCodeResult.validation.statusCode);
                     }
                 } catch (e) {
-                    this.log.error(`getPayload: Response body is not a valid JSON, using raw string for validation`, e.message, payloadDecoded);
+                    this.log.error(`[payloadValidator] Error evaluate response payload`, e.message, payloadDecoded, this.fuzzer.id);
+                    // Created specific validation error
                     return this.responseIsNotJson(statusCodeResult.validation.statusCode);
                 }
             } else if (!responseSchema && !payload) {

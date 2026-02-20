@@ -1,5 +1,5 @@
 import { UUID } from 'crypto';
-import { FuzzerResponse, SecurityEvidence, SeverityLevel, Vector } from '../Types';
+import { FuzzerResponse, SecurityEvidence, SecurityValidation, SeverityLevel, Vector } from '../Types';
 import { Logger } from '@nestjs/common';
 
 
@@ -337,20 +337,4 @@ export class ReflectedXSSDetector {
         // Baja confianza → LOW
         return 'LOW';
     }
-}
-
-
-export interface SecurityValidation {
-    type: 'SECURITY_VALIDATION';
-    category: string;
-    subcategory: string;
-    severity: SeverityLevel;
-    title: string;
-    description: string;
-    evidence: SecurityEvidence;
-    remediation: string[];
-    cwe?: string;
-    owasp?: string;
-    confidence: number;
-    metadata: Record<string, any>;
 }

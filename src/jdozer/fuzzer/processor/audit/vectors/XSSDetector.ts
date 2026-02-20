@@ -1,9 +1,9 @@
 import { Logger } from "@nestjs/common";
 import { RedisService } from "../../persistence/RedisService";
 import { BaseDetector } from "../BaseDetector";
-import { Fuzzer, Mutation, SecurityFinding, Vector } from "../Types";
+import { Fuzzer, Mutation, SecurityFinding, SecurityValidation, Vector } from "../Types";
 import { XSSException } from "./XSSException";
-import { ReflectedXSSDetector, SecurityValidation } from "./ReflectedXSSDetector";
+import { ReflectedXSSDetector } from "./ReflectedXSSDetector";
 
 
 export class XSSDetector extends BaseDetector {

@@ -36,7 +36,6 @@ export class RequestPayloadDetector extends BaseDetector {
                 this.log.error(errorMsg, e, payloadStr);
                 throw new OpenApiException(errorMsg);
             }
-            this.log.verbose(this.fuzzer.id);
             const validator: ValidateFunction = this.getValidator(schema);
             const isValid = validator(payload);
             if (!isValid) {

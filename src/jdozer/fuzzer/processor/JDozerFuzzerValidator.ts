@@ -1,23 +1,19 @@
 import { Logger } from "@nestjs/common";
 import { RedisService } from "./persistence/RedisService";
-import { Fuzzer, SecurityFinding, Validation } from "./audit/Types";
+import { Audit, Fuzzer, JDFAudit, SecurityValidation, Validation } from "./audit/Types";
 import { OpenApiDetector } from "./audit/api/OpenApiDetector";
-import { RedisEventsGateway } from "./event/RedisEventGateway";
 import { XSSDetector } from "./audit/vectors/XSSDetector";
-import { SecurityValidation } from "./audit/vectors/ReflectedXSSDetector";
 
 export class JDozerFuzzerValidator {
 
     private readonly log = new Logger(JDozerFuzzerValidator.name);
     private readonly redisService: RedisService;
-    private readonly runntimeEvent: RedisEventsGateway['runntimeEvent']
 
-    constructor(redisService: RedisService, runntimeEvent: RedisEventsGateway['runntimeEvent']) {
+    constructor(redisService: RedisService) {
         this.redisService = redisService;
-        this.runntimeEvent = runntimeEvent;
     }
 
-    public async validate(event: any): Promise<Validation[]> {
+    public async validate(event: any): Promise<string> {
         try {
 
             const fuzzer: Fuzzer = await this.redisService.get(event.fuzzingId);
@@ -28,18 +24,21 @@ export class JDozerFuzzerValidator {
             const xssDetector: XSSDetector = new XSSDetector(fuzzer, this.redisService);
             const findings: SecurityValidation[] = await xssDetector.detectAux();
 
-            const audit: any = {
+            const id = `JDF:${fuzzer.fuzzerId}:AUD:${fuzzer.operationId}:${fuzzer.caseId}`;
+            const audit: JDFAudit = {
+                id: id,
+                fuzzerId: fuzzer.fuzzerId,
+                caseId: fuzzer.caseId,
+                operationId: fuzzer.operationId,
                 schemas: validations,
                 vectors: findings
             };
-            await this.redisService.set(`JDF:${fuzzer.fuzzerId}:AUD:${fuzzer.operationId}:${fuzzer.caseId}`, audit);
-
-            await this.runntimeEvent(event.fuzzerId, 'validations', audit);
-            return validations;
+            await this.redisService.set(id, audit);
+            return id;
 
         } catch (e) {
-            this.log.error(`Error validating fuzzer`, e);
-            return [];
+            this.log.error(`Error validating fuzzer: ${event.fuzzingId}`, e);
+            return undefined;
         }
     }
 }

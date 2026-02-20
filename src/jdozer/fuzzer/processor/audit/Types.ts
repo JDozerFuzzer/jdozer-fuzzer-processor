@@ -236,3 +236,27 @@ export interface SecurityEvidence {
     requestId: UUID,
     timestamp: number
 }
+
+export interface SecurityValidation {
+    type: 'SECURITY_VALIDATION';
+    category: string;
+    subcategory: string;
+    severity: SeverityLevel;
+    title: string;
+    description: string;
+    evidence: SecurityEvidence;
+    remediation: string[];
+    cwe?: string;
+    owasp?: string;
+    confidence: number;
+    metadata: Record<string, any>;
+}
+
+export interface JDFAudit {
+    id: string;
+    fuzzerId: UUID;
+    caseId: UUID;
+    operationId: string;
+    schemas: Validation[];
+    vectors: SecurityValidation[];
+}

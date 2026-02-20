@@ -6,9 +6,9 @@ import { randomUUID, UUID } from 'crypto';
 import { RequestInterceptor } from '../runntime/RequestInterceptor';
 import { StatusCodeInterceptor } from '../runntime/StatusCodeInterceptor';
 import { ResponseInterceptor } from '../runntime/ResponseInterceptor';
-import { VectorsProcessor } from '../audit/vectors/VectorsProcessor';
 import { VectorsInterceptor } from '../audit/vectors/VectorsInterceptor';
-import { JDozerFuzzerValidator } from '../JDozerFuzzerValidator';
+import { EventRouter } from './EventRouter';
+import { JDFEventCraft } from './Types';
 
 @Injectable()
 export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
@@ -28,6 +28,8 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
     private readonly statusCodeInterceptor: StatusCodeInterceptor;
     private readonly responseInterceptor: ResponseInterceptor;
 
+    private readonly eventRouter: EventRouter;
+
     constructor(
         private readonly fuzzerProcessor: JDozerFuzzerProcessor,
         private readonly redisService: RedisService
@@ -36,6 +38,8 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
             host: process.env.FUZZER_REDIS_HOST,
             port: +process.env.FUZZER_REDIS_PORT
         });
+
+        this.eventRouter = new EventRouter(this.redisService);
 
         this.subEngine = this.subscriber.duplicate();
         this.setupEngineSubscriptions();
@@ -86,8 +90,9 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
                     const event: any = JSON.parse(message);
                     if (event.headers.version === '1.0.0' && event.headers.entityType === 'fuzzer-processor' && event.headers.eventType === 'req-res-merged') {
                         try {
-                            (new JDozerFuzzerValidator(this.redisService, this.runntimeEvent)).validate(event.payload);
                             const inject = await (new VectorsInterceptor(this.redisService)).fuzzByStatusCode(event.payload);
+                            const eventCraft: JDFEventCraft = await this.eventRouter.route(event);
+                            await this.sendEvent(eventCraft);
                             if (inject) {
                                 await this.runntimeEvent(event.headers.entityId, 'fuzz-by-status-code', inject);
                             }
@@ -95,6 +100,8 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
                             this.log.error(`[message] Error intercepting request: ${e.message}`, e);
                         }
                     }
+
+
                 }
             } catch (e) {
                 this.log.error(`Error parsing message: ${message}`);
@@ -216,6 +223,25 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
             return await this.redisService.publish(RedisEventsGateway.MY_CHANNEL, event);
         } catch (e) {
             this.log.error(`[runntimeEvent] Error publishing event: ${e.message}`, e);
+        }
+    }
+
+    public async sendEvent(eventCraft: JDFEventCraft): Promise<void> {
+        try {
+            const event = {
+                headers: {
+                    id: randomUUID(),
+                    timestamp: new Date().getTime(),
+                    version: '1.0.0',
+                    entityId: eventCraft.entityId,
+                    entityType: 'fuzzer-processor',
+                    eventType: eventCraft.eventType
+                },
+                payload: eventCraft.payload
+            };
+            return await this.redisService.publish(RedisEventsGateway.MY_CHANNEL, event);
+        } catch (e) {
+            this.log.error(`[sendEvent] Error publishing event: ${e.message}`, e);
         }
     }
 
