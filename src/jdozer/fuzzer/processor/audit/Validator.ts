@@ -1,13 +1,12 @@
 
-
 export class Validator {
 
-    constructor(isValid: boolean, errors?: any[]) {
-        this.isValid = isValid;
-        this.errors = errors;
+    constructor(
+        public isValid: boolean,
+        public errors?: any[],
+        public matchedStatusCode?: string | undefined,
+        public details?: any | undefined
+    ) {
     }
-
-    public isValid: boolean;
-    public errors: any[] | undefined;
 
 }

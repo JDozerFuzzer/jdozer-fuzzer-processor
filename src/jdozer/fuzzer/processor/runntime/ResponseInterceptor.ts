@@ -1,8 +1,6 @@
 import { Logger } from "@nestjs/common";
 import { RedisService } from "../persistence/RedisService";
 import { RedisEventsGateway } from "../event/RedisEventGateway";
-import { ResponseAudit } from "../audit/ResponseAudit";
-import { Audit } from "../audit/Audit";
 import { ResponseAuditor } from "../audit/ResponseAuditor";
 
 export class ResponseInterceptor {
@@ -21,7 +19,7 @@ export class ResponseInterceptor {
     public async intercept(responseEvent: any) {
         try {
 
-            const fuzzing: any = await this.responseAuditor.audit(
+            const fuzzing: any = await this.responseAuditor.merge(
                 responseEvent.responseId.replace('RES', 'REQ'),
                 responseEvent.responseId,
                 responseEvent.operationId,

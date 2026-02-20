@@ -12,7 +12,7 @@ export class VectorsInterceptor {
     }
 
     private fuzzByStatusCodeAudit = class FuzzByStatusCodeAudit {
-        public level: { LOW: 1 } | { MEDIUM: 2 } | { HIGH: 3 };
+        public level: 1 | 2 | 3;
         public property: "payload" | "headers" | "path" | "query";
         public description: string;
         public statusCode: number;
@@ -26,11 +26,11 @@ export class VectorsInterceptor {
             if (fuzzing.request.mutations.isValid === false) {
                 scriptIn.statusCode = fuzzing.response.statusCode;
                 if (scriptIn.statusCode >= 200 || scriptIn.statusCode <= 299) {
-                    scriptIn.level = { HIGH: 3 };
+                    scriptIn.level = 3;
                 } else if (scriptIn.statusCode >= 500 || scriptIn.statusCode <= 599) {
-                    scriptIn.level = { MEDIUM: 2 };
+                    scriptIn.level = 2;
                 } else {
-                    scriptIn.level = { LOW: 1 };
+                    scriptIn.level = 1;
                 }
                 scriptIn.property = this.getProperty(fuzzing.request.mutations);
                 scriptIn.description = await this.getDescription(fuzzing.request.mutations[scriptIn.property]);
@@ -39,7 +39,7 @@ export class VectorsInterceptor {
                     fuzzing.audit = {};
                 }
 
-                fuzzing.audit.fuzzByStatusCode = scriptIn;
+                fuzzing.audit.fuzzByLevel = scriptIn;
                 await this.redisService.set(fuzzingCase.fuzzingId, fuzzing);
 
                 return scriptIn;

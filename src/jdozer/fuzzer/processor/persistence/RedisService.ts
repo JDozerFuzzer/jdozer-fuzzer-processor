@@ -19,7 +19,6 @@ export class RedisService implements OnModuleDestroy {
     public async getKeys(pattern: string): Promise<string[]> {
         try {
             const keys: string[] = await this.client.keys(pattern);
-            this.log.verbose(`getKeys: Found ${keys.length} keys for pattern ${pattern}`);
             return keys;
         } catch (e) {
             const errorMsg = `getKeys: Error retrieving keys for pattern ${pattern}: ${e.message}`;
@@ -60,7 +59,6 @@ export class RedisService implements OnModuleDestroy {
     async publish(channel: string, payload: any) {
         const payloadJson = JSON.stringify(payload);
         const eventId = await this.client.publish(channel, payloadJson);
-        this.log.verbose(`publish: ${channel} / ${eventId} - ${payloadJson}`);
         return;
     }
 

@@ -8,6 +8,7 @@ import { StatusCodeInterceptor } from '../runntime/StatusCodeInterceptor';
 import { ResponseInterceptor } from '../runntime/ResponseInterceptor';
 import { VectorsProcessor } from '../audit/vectors/VectorsProcessor';
 import { VectorsInterceptor } from '../audit/vectors/VectorsInterceptor';
+import { JDozerFuzzerValidator } from '../JDozerFuzzerValidator';
 
 @Injectable()
 export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
@@ -58,7 +59,6 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
         this.subEngine.subscribe(RedisEventsGateway.ENGINE_CHANNEL);
         this.log.log(`Subscribed to ${RedisEventsGateway.ENGINE_CHANNEL}`);
         this.subEngine.on('message', async (channel: string, message: string) => {
-            this.log.verbose(`Received message on channel ${channel}: ${message}`);
             try {
                 if (RedisEventsGateway.ENGINE_CHANNEL === channel) {
                     const event: any = JSON.parse(message);
@@ -81,14 +81,16 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
         this.subProcessor.subscribe(RedisEventsGateway.MY_CHANNEL);
         this.log.log(`Subscribed to ${RedisEventsGateway.MY_CHANNEL}`);
         this.subProcessor.on('message', async (channel: string, message: string) => {
-            this.log.verbose(`Received message on channel ${channel}: ${message}`);
             try {
                 if (RedisEventsGateway.MY_CHANNEL === channel) {
                     const event: any = JSON.parse(message);
                     if (event.headers.version === '1.0.0' && event.headers.entityType === 'fuzzer-processor' && event.headers.eventType === 'req-res-merged') {
                         try {
+                            (new JDozerFuzzerValidator(this.redisService, this.runntimeEvent)).validate(event.payload);
                             const inject = await (new VectorsInterceptor(this.redisService)).fuzzByStatusCode(event.payload);
-                            await this.runntimeEvent(event.headers.entityId, 'fuzz-by-status-code', inject);
+                            if (inject) {
+                                await this.runntimeEvent(event.headers.entityId, 'fuzz-by-status-code', inject);
+                            }
                         } catch (e) {
                             this.log.error(`[message] Error intercepting request: ${e.message}`, e);
                         }
@@ -177,7 +179,6 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
                 });
             }
         } else {
-            this.log.verbose(`[router] Unknown event: entitytype[${event.entityType}], eventType[${event.eventType}]`);
             return;
         }
     }

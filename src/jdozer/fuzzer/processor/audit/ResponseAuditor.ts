@@ -1,7 +1,6 @@
 import { Logger } from "@nestjs/common";
 import { RedisService } from "../persistence/RedisService";
 import { UUID } from "crypto";
-import { ResponseAudit } from "../audit/ResponseAudit";
 import { AuditorException } from "./AuditorException";
 
 
@@ -13,12 +12,11 @@ export class ResponseAuditor {
         private readonly redisService: RedisService
     ) { }
 
-    public async audit(req: string, res: string, operationId: string, fuzzerId: UUID): Promise<any> {
+    public async merge(req: string, res: string, operationId: string, fuzzerId: UUID): Promise<any> {
         try {
 
             const aggregate: any = {};
             const operation = await this.getOperationDefinition(operationId, fuzzerId);
-            this.setResponseAudit(operation);
             const request: any = await this.redisService.get(req);
             const response: any = await this.redisService.get(res);
             const mutations = await this.getMutations(request, fuzzerId);
@@ -26,7 +24,6 @@ export class ResponseAuditor {
             aggregate.request = request;
             aggregate.request.mutations = mutations;
             aggregate.response = response;
-            aggregate.response.audit = this.responseAudits.get(operation.id).response({ statusCode: response.statusCode, payload: response.payload });
 
             const key = `JDF:${fuzzerId}:FZZ:${operation.name}:${request.uuid}`;
             aggregate.id = key;
@@ -104,14 +101,5 @@ export class ResponseAuditor {
                 throw new AuditorException(error);
         }
     }
-
-    private responseAudits: Map<string, ResponseAudit> = new Map();
-    private setResponseAudit(operationDefinition: any) {
-        if (!this.responseAudits.has(operationDefinition.id)) {
-            this.responseAudits.set(operationDefinition.id, new ResponseAudit(operationDefinition));
-        }
-    }
-
-
 
 }

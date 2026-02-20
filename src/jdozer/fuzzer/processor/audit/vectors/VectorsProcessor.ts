@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 import { UUID } from "crypto";
 import { Storage } from "../../persistence/Storage";
 import { VectorCount } from "./VectorCount";

@@ -15,7 +15,6 @@ export class StatusCodeInterceptor {
 
     async intercept(payload: any) {
         try {
-            this.log.verbose(`[intercept] Intercepting response: ${payload.responseId}`);
             const res: any = await this.redisService.get(payload.responseId);
             const eventPayload: any = {
                 fuzzerId: payload.fuzzerId,

@@ -2,9 +2,6 @@ import { UUID } from "crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Storage } from "./persistence/Storage";
 import { ProcessorException } from "./ProcessorException";
-import { Validator } from "./audit/Validator";
-import { ResponseAudit } from "./audit/ResponseAudit";
-import { Audit } from "./audit/Audit";
 import { StatusCodeCounts } from "./counts/StatusCodeCounts";
 import { EngineMetrics } from "./audit/EngineMetrics";
 import { VectorsProcessor } from "./audit/vectors/VectorsProcessor";
@@ -27,24 +24,20 @@ export class JDozerFuzzerProcessor {
             for (const operationId of fuzzer.operationIds) {
 
                 const operation: any = await this.storage.getOperation(operationId, fuzzer.id);
-                const responseAudit = new ResponseAudit(operation);
                 const reqIds: string[] = await this.storage.getRequestIds(operationId, fuzzer.id);
-                let auditor: Audit;
                 const statusCodeCounts = new StatusCodeCounts(operation.name, operation.path, operation.method.toUpperCase());
                 for (const reqId of reqIds) {
                     const request: any = await this.storage.getRequestById(reqId);
                     const mutations: any = await this.getMutation(request, fuzzer.id);
                     const response: any = await this.storage.getResponseByRequestId(reqId);
                     if (!response) continue;
-                    auditor = responseAudit.response({ statusCode: response.statusCode, payload: response.payload });
                     const aggregate: any = {};
                     aggregate.request = request;
                     aggregate.request.mutations = mutations;
                     aggregate.response = response;
-                    aggregate.response.audit = auditor;
 
                     vectorsProcessor.add(aggregate);
-                    this.storage.saveFuzz(fuzzer.id, request.uuid as UUID, operationId, response.statusCode, aggregate);
+                    await this.storage.saveFuzz(fuzzer.id, request.uuid as UUID, operationId, response.statusCode, aggregate);
 
                     statusCodeCounts.add(response.statusCode);
                 }
