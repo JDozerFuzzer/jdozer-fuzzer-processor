@@ -25,7 +25,7 @@ export class EventRouter {
             }
 
             if ('fuzzer-engine' === event.headers.entityType) {
-                await this.engine(event);
+                return await this.engine(event);
             }
 
             if ('fuzzer-processor' === event.headers.entityType) {
@@ -39,6 +39,14 @@ export class EventRouter {
         try {
             if ('response-received' === event.headers.eventType) {
 
+            } else if ('engine-stopped' === event.headers.eventType) {
+                return {
+                    entityId: event.headers.entityId,
+                    eventType: 'fuzzing-finished',
+                    payload: {
+                        fuzzerId: event.payload.fuzzerId
+                    }
+                } as JDFEventCraft;
             }
         } catch (e) { }
     }

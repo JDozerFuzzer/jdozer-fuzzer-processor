@@ -13,10 +13,7 @@ export class EventFactory {
         this.redisService = redisService;
     }
 
-    public async create(
-        type: 'audit',
-        id: string
-    ) {
+    public async create(type: 'audit', id: string) {
         switch (type) {
             case 'audit':
                 return await this.createAudit(id);

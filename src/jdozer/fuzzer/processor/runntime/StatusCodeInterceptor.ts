@@ -23,7 +23,7 @@ export class StatusCodeInterceptor {
                 statusCode: res.statusCode,
                 statusMessage: res.statusMessage
             };
-            await this.redisEventGateway.runntimeEvent(payload.fuzzerId, 'status-code-runtime', eventPayload);
+            await this.redisEventGateway.runntimeEvent(payload.fuzzerId, 'status-code', eventPayload);
         } catch (e) {
             this.log.error(`[intercept] Error intercepting response: ${e.message}`, e);
             throw e;

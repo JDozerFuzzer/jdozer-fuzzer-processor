@@ -8,7 +8,7 @@ import { StatusCodeInterceptor } from '../runntime/StatusCodeInterceptor';
 import { ResponseInterceptor } from '../runntime/ResponseInterceptor';
 import { VectorsInterceptor } from '../audit/vectors/VectorsInterceptor';
 import { EventRouter } from './EventRouter';
-import { JDFEventCraft } from './Types';
+import { JDFEvent, JDFEventCraft } from './Types';
 
 @Injectable()
 export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
@@ -66,17 +66,21 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
             try {
                 if (RedisEventsGateway.ENGINE_CHANNEL === channel) {
                     const event: any = JSON.parse(message);
+                    const eventCraft: JDFEventCraft = await this.eventRouter.route(event as JDFEvent);
+                    if (eventCraft) {
+                        await this.sendEvent(eventCraft);
+                    }
                     if (event.headers.version === '1.0.0' && event.headers.entityType === 'fuzzer-engine' && event.headers.eventType === 'after-response') {
                         try {
                             await this.statusCodeInterceptor.intercept(event.payload);
                             await this.responseInterceptor.intercept(event.payload);
                         } catch (e) {
-                            this.log.error(`[message] Error intercepting request: ${e.message}`, e);
+                            this.log.error(`[${RedisEventsGateway.ENGINE_CHANNEL}] Error intercepting request: ${e.message}`, e);
                         }
                     }
                 }
             } catch (e) {
-                this.log.error(`Error parsing message: ${message}`);
+                this.log.error(`[${RedisEventsGateway.ENGINE_CHANNEL}] Error parsing message: ${message}`, e);
             }
         });
     }
@@ -90,11 +94,13 @@ export class RedisEventsGateway implements OnModuleInit, OnModuleDestroy {
                     const event: any = JSON.parse(message);
                     if (event.headers.version === '1.0.0' && event.headers.entityType === 'fuzzer-processor' && event.headers.eventType === 'req-res-merged') {
                         try {
-                            const inject = await (new VectorsInterceptor(this.redisService)).fuzzByStatusCode(event.payload);
+                            const inject = await (new VectorsInterceptor(this.redisService)).falsePositiveLevel(event.payload);
                             const eventCraft: JDFEventCraft = await this.eventRouter.route(event);
-                            await this.sendEvent(eventCraft);
+                            if (eventCraft) {
+                                await this.sendEvent(eventCraft);
+                            }
                             if (inject) {
-                                await this.runntimeEvent(event.headers.entityId, 'fuzz-by-status-code', inject);
+                                await this.runntimeEvent(event.headers.entityId, 'false-positive', inject);
                             }
                         } catch (e) {
                             this.log.error(`[message] Error intercepting request: ${e.message}`, e);
